@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -67,8 +68,16 @@ class AccountPage extends StatelessWidget {
 
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/auth');
+              onPressed: () async {
+                // Hapus status login
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('isLoggedIn', false);
+
+                // Navigasi ke halaman auth
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/auth', (route) => false);
+
+                // Tampilkan snackbar
                 showTopSnackBar(
                   context,
                   Row(

@@ -13,8 +13,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E66),
       body: SafeArea(
@@ -31,16 +29,20 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
             ),
             Positioned(
-              top: 12,
-              left: 16,
+              top: 20,
+              left: 20,
               child: GestureDetector(
                 onTap: () => Navigator.pushNamed(context, '/auth'),
                 child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Image.asset(
-                    'assets/ikon/back.png',
-                    height: 33,
-                    width: 33,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF21A8DD),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 24,
                   ),
                 ),
               ),
@@ -50,9 +52,14 @@ class _SignUpPageState extends State<SignUpPage> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: SizedBox(
-                height: screenHeight - 175,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
                 child: Container(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height - 175,
+                  ),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius:
@@ -73,99 +80,125 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Widget _buildSignUpForm() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Nama",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 8),
-            _buildInputField(hint: "Nama Panjang"),
-            const SizedBox(height: 16),
-            const Text("Email",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 8),
-            _buildInputField(
-                hint: "example@gmail.com",
-                keyboardType: TextInputType.emailAddress),
-            const SizedBox(height: 16),
-            const Text("Password",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 8),
-            _buildPasswordField(),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _isSuccess = true;
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF21A8DD),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+        // Form fields section
+        const Text("Nama",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        _buildInputField(hint: "Nama Panjang"),
+        const SizedBox(height: 16),
+
+        const Text("Email",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        _buildInputField(
+            hint: "example@gmail.com",
+            keyboardType: TextInputType.emailAddress),
+        const SizedBox(height: 16),
+
+        const Text("Password",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        _buildPasswordField(),
+        const SizedBox(height: 24),
+
+        // Sign up button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _isSuccess = true;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF21A8DD),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+            child: const Text("Daftar",
+                style: TextStyle(color: Colors.white, fontSize: 20)),
+          ),
+        ),
+
+        // Bottom section with proper spacing like login page
+        const SizedBox(height: 24),
+
+        const Center(
+          child: Text(
+            "Atau",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: GestureDetector(
+            onTap: () {
+              // TODO: aksi login/daftar dengan Google
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  width: 1,
                 ),
-                child: const Text("Daftar",
-                    style: TextStyle(color: Colors.white, fontSize: 20)),
+              ),
+              child: Image.asset(
+                'assets/google.png',
+                height: 32,
+                width: 32,
+              ),
+            ),
+          ),
+        ),
+
+        // Bottom text section
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.1,
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "Sudah punya akun? ",
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/login');
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                "Masuk",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE695CC),
+                  fontSize: 16,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Color(0xFFE695CC),
+                  decorationThickness: 1.5,
+                ),
               ),
             ),
           ],
         ),
-        Column(
-          children: [
-            const SizedBox(height: 24),
-            const Center(
-              child: Text("Atau",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Image.asset('assets/google.png', height: 53, width: 53),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("Sudah punya akun? ",
-                    style: TextStyle(color: Colors.black, fontSize: 14)),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/login');
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 0),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    "Masuk",
-                    style: TextStyle(
-                      color: Color.fromARGB(236, 236, 173, 204),
-                      fontWeight: FontWeight.bold,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Color.fromARGB(236, 236, 173, 204),
-                      decorationThickness: 1.5,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        )
       ],
     );
   }
@@ -259,8 +292,10 @@ class _SignUpPageState extends State<SignUpPage> {
           borderSide: BorderSide.none,
         ),
         suffixIcon: IconButton(
-          icon:
-              Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(
+            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey[600],
+          ),
           onPressed: () {
             setState(() {
               _obscurePassword = !_obscurePassword;

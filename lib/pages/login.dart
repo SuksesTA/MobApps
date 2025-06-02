@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,6 +11,18 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
+  // Fungsi untuk menyimpan status login
+  Future<void> saveLoginStatus(bool isLoggedIn) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', isLoggedIn);
+  }
+
+  // Fungsi untuk menangani login
+  Future<void> handleLogin() async {
+    await saveLoginStatus(true); // Simpan status login
+    Navigator.pushReplacementNamed(context, '/home');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,7 +31,6 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Logo tengah atas
             Align(
               alignment: Alignment.topCenter,
               child: Padding(
@@ -29,8 +41,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-
-            // Tombol kembali
             Positioned(
               top: 20,
               left: 20,
@@ -50,8 +60,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-
-            // Kontainer putih isi form
             Positioned(
               top: 220,
               left: 0,
@@ -112,14 +120,12 @@ class _LoginPageState extends State<LoginPage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/home');
-                          },
+                          onPressed: handleLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF21A8DD),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
+                              borderRadius: BorderRadius.circular(24),
                             ),
                             elevation: 0,
                           ),

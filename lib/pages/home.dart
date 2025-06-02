@@ -22,25 +22,28 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF2C3E66),
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Beranda"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.location_on), label: "Lacak"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Akun"),
-        ],
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        body: _pages[_currentIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFF2C3E66),
+          unselectedItemColor: Colors.grey,
+          showUnselectedLabels: true,
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Beranda"),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.location_on), label: "Lacak"),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Akun"),
+          ],
+        ),
       ),
     );
   }

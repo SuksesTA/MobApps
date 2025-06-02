@@ -46,7 +46,7 @@ class ProfilSettingPage extends StatelessWidget {
                           color: Color(0xFF2C3E66),
                         )),
                     onTap: () {
-                      // TODO: aksi ubah nama
+                      Navigator.pushNamed(context, '/edit');
                     },
                   ),
                   const Divider(height: 1),
