@@ -20,7 +20,7 @@ class _LoginPageState extends State<LoginPage> {
   // Fungsi untuk menangani login
   Future<void> handleLogin() async {
     await saveLoginStatus(true); // Simpan status login
-    Navigator.pushReplacementNamed(context, '/home');
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => (false));
   }
 
   @override
