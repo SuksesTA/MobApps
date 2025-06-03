@@ -1,14 +1,15 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
-import 'package:flutter/foundation.dart';
 
 class MQTTClientWrapper {
   static final MQTTClientWrapper _instance = MQTTClientWrapper._internal();
-  factory MQTTClientWrapper(
-      {required void Function(String) onMessageReceived}) {
-    _instance.onMessageReceived = onMessageReceived;
+  factory MQTTClientWrapper({void Function(String)? onMessageReceived}) {
+    if (onMessageReceived != null &&
+        !_instance._listeners.contains(onMessageReceived)) {
+      _instance._listeners.add(onMessageReceived);
+    }
     if (!_instance._initialized) {
       _instance._prepareMqttClient();
     }
@@ -18,7 +19,7 @@ class MQTTClientWrapper {
   MQTTClientWrapper._internal();
 
   late MqttServerClient client;
-  late void Function(String) onMessageReceived;
+  final List<void Function(String)> _listeners = [];
   bool _initialized = false;
   bool _isConnected = false;
 
@@ -52,14 +53,15 @@ class MQTTClientWrapper {
           MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
       final topic = c[0].topic;
       debugPrint("[MQTT] Message from $topic: $message");
-      onMessageReceived(message);
+      for (var listener in _listeners) {
+        listener(message);
+      }
     });
 
-    _subscribeToTopic('test');
     _initialized = true;
   }
 
-  void _subscribeToTopic(String topic) {
+  void subscribeToTopic(String topic) {
     if (_isConnected) {
       debugPrint("[MQTT] Subscribing to $topic");
       client.subscribe(topic, MqttQos.atMostOnce);
@@ -80,7 +82,7 @@ class MQTTClientWrapper {
       }
     });
 
-    _subscribeToTopic(topic);
+    subscribeToTopic(topic);
 
     Future.delayed(const Duration(seconds: 3)).then((_) {
       if (!completer.isCompleted) completer.complete(false);

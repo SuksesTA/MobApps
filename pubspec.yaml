@@ -41,6 +41,7 @@ dependencies:
   http: ^1.3.0
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.2
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -69,3 +70,8 @@ flutter_native_splash:
   image: assets/Splash_Screen.png
   android: true
   ios: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/ikon/logo_icon.png"
