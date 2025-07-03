@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,16 +14,77 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
-  // Fungsi untuk menyimpan status login
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
   Future<void> saveLoginStatus(bool isLoggedIn) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', isLoggedIn);
   }
 
-  // Fungsi untuk menangani login
   Future<void> handleLogin() async {
-    await saveLoginStatus(true); // Simpan status login
-    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => (false));
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email dan password wajib diisi")),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      await saveLoginStatus(true);
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Login gagal: ${e.message}")),
+      );
+    }
+  }
+
+  Future<void> handleGoogleLogin() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid);
+
+      final docSnapshot = await userDoc.get();
+      if (!docSnapshot.exists) {
+        await userDoc.set({
+          'name': userCredential.user!.displayName ?? '',
+          'email': userCredential.user!.email,
+          'created_at': Timestamp.now(),
+          'sign_in_method': 'google',
+        });
+      }
+
+      await saveLoginStatus(true);
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Login Google gagal: $e")),
+      );
+    }
   }
 
   @override
@@ -93,7 +157,10 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _buildInputField(hint: "example@gmail.com"),
+                      _buildInputField(
+                        hint: "example@gmail.com",
+                        controller: _emailController,
+                      ),
                       const SizedBox(height: 16),
                       const Text(
                         "Password",
@@ -108,11 +175,17 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Text(
-                          "Lupa password?",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/reset');
+                          },
+                          child: Text(
+                            "Lupa password?",
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
                       ),
@@ -153,9 +226,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 16),
                       Center(
                         child: GestureDetector(
-                          onTap: () {
-                            // TODO: aksi login dengan Google
-                          },
+                          onTap: handleGoogleLogin,
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -221,8 +292,12 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildInputField({String? hint}) {
+  Widget _buildInputField({
+    String? hint,
+    required TextEditingController controller,
+  }) {
     return TextField(
+      controller: controller,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
@@ -250,6 +325,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildPasswordField() {
     return TextField(
+      controller: _passwordController,
       obscureText: _obscurePassword,
       decoration: InputDecoration(
         hintText: "********",

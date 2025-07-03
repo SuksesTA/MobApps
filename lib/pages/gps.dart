@@ -38,16 +38,16 @@ class _GpsPageState extends State<GpsPage> {
   void _handleMessage(String message) {
     try {
       final parts = message.split(',');
-      if (parts.length >= 8) {
+      if (parts.length >= 9) {
         setState(() {
           currentPosition =
-              LatLng(double.parse(parts[0]), double.parse(parts[1]));
-          temperature = parts[2];
-          humidity = parts[3];
-          accX = parts[4];
-          accY = parts[5];
-          accZ = parts[6];
-          speed = parts[7];
+              LatLng(double.parse(parts[2]), double.parse(parts[3]));
+          temperature = parts[4];
+          humidity = parts[5];
+          accX = parts[6];
+          accY = parts[7];
+          accZ = parts[8];
+          speed = parts[9];
           //condition = parts[8];
         });
       } else {

@@ -24,30 +24,24 @@ class _TrackPageState extends State<TrackPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F2F6),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF2C3E66),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pushNamed(context, '/home'),
+        ),
+        title: const Text(
+          'Lacak',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            width: double.infinity,
-            color: const Color(0xFF2C3E66),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/home'),
-                  child: const Icon(Icons.arrow_back, color: Colors.white),
-                ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Lacak',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),

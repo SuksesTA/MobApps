@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:dst_mk2/pages/profil_setting.dart';
 import 'package:dst_mk2/pages/security_setting.dart';
 import 'package:flutter/material.dart';
@@ -5,14 +6,16 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 //import 'package:dst_mk2/pages/getstarted.dart';
 import 'pages/login.dart';
+import 'pages/reset_password.dart';
 import 'pages/signup.dart';
 import 'pages/auth_landing.dart';
 import 'pages/home.dart';
 import 'pages/edit_name.dart';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized(); // ✅ Pastikan binding siap
-  debugPrint("DEBUG: Aplikasi dimulai"); // ✅ Debug awal aplikasi
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  debugPrint("DEBUG: Aplikasi dimulai");
   runApp(const MyApp());
 }
 
@@ -32,6 +35,7 @@ class MyApp extends StatelessWidget {
         '/auth': (context) => const AuthLanding(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
+        '/reset': (context) => const ResetPasswordPage(),
         '/home': (context) => const HomePage(),
         '/profile': (context) => const ProfilSettingPage(),
         '/security': (context) => const SecuritySettingPage(),

@@ -26,7 +26,7 @@ class MQTTClientWrapper {
   Future<void> _prepareMqttClient() async {
     debugPrint("[MQTT] Preparing client...");
     client = MqttServerClient.withPort(
-      '34.173.150.209',
+      '35.238.54.189',
       'FlutterClient',
       1883,
     );

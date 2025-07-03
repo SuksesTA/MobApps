@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -8,8 +11,107 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isSuccess = false;
+
+  Future<void> _signUpWithFirebase() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    debugPrint(
+        "📥 Input Nama: $name | Email: $email | Password length: ${password.length}");
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      debugPrint("⚠️ Input belum lengkap");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Semua kolom wajib diisi")),
+      );
+      return;
+    }
+
+    try {
+      debugPrint("🔐 Mencoba daftar akun...");
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+      debugPrint("✅ Firebase: User dibuat: ${credential.user?.uid}");
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(credential.user!.uid)
+          .set({
+        'name': name,
+        'email': email,
+        'created_at': Timestamp.now(),
+        'sign_in_method': 'email',
+      });
+      debugPrint("📤 Data dikirim ke Firestore");
+
+      await credential.user!.sendEmailVerification();
+      debugPrint("📨 Email verifikasi dikirim ke $email");
+
+      if (!mounted) {
+        debugPrint("⛔ Widget sudah tidak aktif, batal setState");
+        return;
+      }
+
+      debugPrint("🎯 Memanggil setState untuk tampilkan halaman sukses...");
+      setState(() {
+        _isSuccess = true;
+      });
+    } on FirebaseAuthException catch (e) {
+      debugPrint("❌ Gagal daftar: ${e.message}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal daftar: ${e.message}")),
+      );
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid);
+
+      final docSnapshot = await userDoc.get();
+      if (!docSnapshot.exists) {
+        await userDoc.set({
+          'name': userCredential.user!.displayName ?? '',
+          'email': userCredential.user!.email,
+          'created_at': Timestamp.now(),
+          'sign_in_method': 'google',
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login Google berhasil")),
+      );
+
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Login Google gagal: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,36 +184,32 @@ class _SignUpPageState extends State<SignUpPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Form fields section
         const Text("Nama",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 8),
-        _buildInputField(hint: "Nama Panjang"),
+        _buildInputField(
+          hint: "Nama Panjang",
+          controller: _nameController,
+        ),
         const SizedBox(height: 16),
-
         const Text("Email",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 8),
         _buildInputField(
-            hint: "example@gmail.com",
-            keyboardType: TextInputType.emailAddress),
+          hint: "example@gmail.com",
+          keyboardType: TextInputType.emailAddress,
+          controller: _emailController,
+        ),
         const SizedBox(height: 16),
-
         const Text("Password",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 8),
         _buildPasswordField(),
         const SizedBox(height: 24),
-
-        // Sign up button
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _isSuccess = true;
-              });
-            },
+            onPressed: _signUpWithFirebase,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF21A8DD),
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -123,10 +221,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: TextStyle(color: Colors.white, fontSize: 20)),
           ),
         ),
-
-        // Bottom section with proper spacing like login page
         const SizedBox(height: 24),
-
         const Center(
           child: Text(
             "Atau",
@@ -140,9 +235,7 @@ class _SignUpPageState extends State<SignUpPage> {
         const SizedBox(height: 12),
         Center(
           child: GestureDetector(
-            onTap: () {
-              // TODO: aksi login/daftar dengan Google
-            },
+            onTap: _signInWithGoogle,
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -161,25 +254,16 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           ),
         ),
-
-        // Bottom text section
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.1,
-        ),
+        SizedBox(height: MediaQuery.of(context).size.height * 0.1),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
               "Sudah punya akun? ",
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.black87, fontSize: 16),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/login');
-              },
+              onPressed: () => Navigator.pushNamed(context, '/login'),
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(0, 0),
@@ -208,9 +292,8 @@ class _SignUpPageState extends State<SignUpPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
+          children: const [
+            Text(
               "Akun berhasil dibuat!",
               style: TextStyle(
                 fontSize: 32,
@@ -219,8 +302,8 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               "Kami telah mengirimkan email verifikasi,\nsilakan buka email Anda dan klik tautan\nverifikasi untuk melanjutkan",
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -259,10 +342,12 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Widget _buildInputField({
+    required TextEditingController controller,
     String? hint,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
+      controller: controller,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
@@ -280,6 +365,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Widget _buildPasswordField() {
     return TextField(
+      controller: _passwordController,
       obscureText: _obscurePassword,
       decoration: InputDecoration(
         hintText: "********",
