@@ -5,7 +5,10 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 
 class MQTTClientWrapper {
   static final MQTTClientWrapper _instance = MQTTClientWrapper._internal();
-  factory MQTTClientWrapper({void Function(String)? onMessageReceived}) {
+
+  factory MQTTClientWrapper({
+    void Function(String topic, String message)? onMessageReceived,
+  }) {
     if (onMessageReceived != null &&
         !_instance._listeners.contains(onMessageReceived)) {
       _instance._listeners.add(onMessageReceived);
@@ -19,7 +22,7 @@ class MQTTClientWrapper {
   MQTTClientWrapper._internal();
 
   late MqttServerClient client;
-  final List<void Function(String)> _listeners = [];
+  final List<void Function(String topic, String message)> _listeners = [];
   bool _initialized = false;
   bool _isConnected = false;
 
@@ -52,9 +55,10 @@ class MQTTClientWrapper {
       final message =
           MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
       final topic = c[0].topic;
+
       debugPrint("[MQTT] Message from $topic: $message");
       for (var listener in _listeners) {
-        listener(message);
+        listener(topic, message);
       }
     });
 
@@ -68,29 +72,61 @@ class MQTTClientWrapper {
     }
   }
 
-  Future<bool> checkTopicExists(String topic) async {
+  void unsubscribeFromTopic(String topic) {
+    if (_isConnected) {
+      debugPrint("[MQTT] Unsubscribing from $topic");
+      client.unsubscribe(topic);
+    }
+  }
+
+  /// Mengecek apakah topik hasil/<token> memiliki pesan (retained atau aktif)
+  Future<bool> checkTopicExists(String token) async {
     if (!_isConnected) return false;
 
+    final fullTopic = "hasil/$token";
     final Completer<bool> completer = Completer<bool>();
 
-    final tempSub =
-        client.updates?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
-      final recMess = c[0].payload as MqttPublishMessage;
-      final topicReceived = c[0].topic;
-      if (topicReceived == topic && !completer.isCompleted) {
+    // Step 1: buat listener dulu
+    late StreamSubscription tempSubscription;
+    tempSubscription =
+        client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
+      final MqttPublishMessage recMess = c[0].payload as MqttPublishMessage;
+      final topic = c[0].topic;
+      final message =
+          MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+
+      debugPrint("[MQTT] [checkTopicExists] Received on $topic: $message");
+
+      if (topic == fullTopic && !completer.isCompleted) {
         completer.complete(true);
       }
     });
 
-    subscribeToTopic(topic);
+    // Step 2: subscribe setelah listener aktif
+    subscribeToTopic(fullTopic);
 
-    Future.delayed(const Duration(seconds: 3)).then((_) {
-      if (!completer.isCompleted) completer.complete(false);
+    // Step 3: timeout 5 detik
+    Future.delayed(const Duration(seconds: 5)).then((_) {
+      if (!completer.isCompleted) {
+        debugPrint(
+            "[MQTT] checkTopicExists: timeout, no message on $fullTopic");
+        completer.complete(false);
+      }
     });
 
     final result = await completer.future;
-    await tempSub?.cancel();
+    await tempSubscription.cancel();
     return result;
+  }
+
+  void addListener(void Function(String topic, String message) listener) {
+    if (!_listeners.contains(listener)) {
+      _listeners.add(listener);
+    }
+  }
+
+  void removeListener(void Function(String topic, String message) listener) {
+    _listeners.remove(listener);
   }
 
   void _onConnected() => debugPrint("[MQTT] onConnected");

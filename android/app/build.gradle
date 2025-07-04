@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.dst_mk2"
+    namespace "com.example.dst_mk2"
     compileSdk = 35
 
     compileOptions {

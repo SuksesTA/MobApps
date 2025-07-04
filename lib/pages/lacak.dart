@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dst_mk2/services/mqtt.dart';
 import 'package:dst_mk2/pages/gps.dart';
+import 'package:dst_mk2/services/qr_scanner.dart';
 
 class TrackPage extends StatefulWidget {
   const TrackPage({super.key});
@@ -11,13 +12,16 @@ class TrackPage extends StatefulWidget {
 
 class _TrackPageState extends State<TrackPage> {
   late MQTTClientWrapper mqttClient;
+  String? keyHex;
 
   @override
   void initState() {
     super.initState();
-    mqttClient = MQTTClientWrapper(onMessageReceived: (msg) {
-      debugPrint("[MQTT] Message received: $msg");
-    });
+    mqttClient = MQTTClientWrapper(
+      onMessageReceived: (topic, message) {
+        debugPrint("[MQTT] Diterima dari $topic: $message");
+      },
+    );
   }
 
   @override
@@ -95,6 +99,7 @@ class _TrackPageState extends State<TrackPage> {
   void _showAddDeviceDialog(BuildContext context) {
     final nameController = TextEditingController();
     final codeController = TextEditingController();
+    keyHex = null;
 
     showDialog(
       context: context,
@@ -118,14 +123,40 @@ class _TrackPageState extends State<TrackPage> {
               controller: codeController,
               decoration: const InputDecoration(hintText: "Kode Tracker"),
             ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const QRScannerPage()),
+                );
+
+                if (result != null && result is Map) {
+                  final topic = result["topic"];
+                  final key = result["key"];
+                  setState(() {
+                    codeController.text = topic;
+                    keyHex = key;
+                  });
+                }
+              },
+              child: const Text("Scan QR"),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
+                final name = nameController.text.trim();
                 final code = codeController.text.trim();
+
                 final isValid = await mqttClient.checkTopicExists(code);
 
                 if (isValid) {
                   Navigator.pop(context);
+
+                  final hasilTopic = "$code/hasil";
+                  mqttClient.subscribeToTopic(hasilTopic);
+
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
@@ -152,8 +183,9 @@ class _TrackPageState extends State<TrackPage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => GpsPage(
-                                    trackerName: nameController.text.trim(),
-                                    trackerTopic: codeController.text.trim(),
+                                    trackerName: name,
+                                    trackerTopic: hasilTopic,
+                                    //keyHex: keyHex,
                                   ),
                                 ),
                               );
