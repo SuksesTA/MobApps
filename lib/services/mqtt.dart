@@ -50,25 +50,33 @@ class MQTTClientWrapper {
       return;
     }
 
-    client.updates?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
-      final MqttPublishMessage recMess = c[0].payload as MqttPublishMessage;
-      final message =
-          MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
-      final topic = c[0].topic;
-
-      debugPrint("[MQTT] Message from $topic: $message");
-      for (var listener in _listeners) {
-        listener(topic, message);
-      }
-    });
+    client.updates?.listen(_onMessageReceived);
 
     _initialized = true;
+  }
+
+  void _onMessageReceived(List<MqttReceivedMessage<MqttMessage>> event) {
+    final MqttPublishMessage recMess = event[0].payload as MqttPublishMessage;
+    final message =
+        MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+    final topic = event[0].topic;
+
+    debugPrint("[MQTT] Message from $topic: $message");
+    for (var listener in _listeners) {
+      try {
+        listener(topic, message);
+      } catch (e) {
+        debugPrint("[MQTT] Listener error: $e");
+      }
+    }
   }
 
   void subscribeToTopic(String topic) {
     if (_isConnected) {
       debugPrint("[MQTT] Subscribing to $topic");
       client.subscribe(topic, MqttQos.atMostOnce);
+    } else {
+      debugPrint("[MQTT] Can't subscribe, not connected.");
     }
   }
 
@@ -85,38 +93,30 @@ class MQTTClientWrapper {
 
     final fullTopic = "hasil/$token";
     final Completer<bool> completer = Completer<bool>();
+    bool responded = false;
 
-    // Step 1: buat listener dulu
-    late StreamSubscription tempSubscription;
-    tempSubscription =
-        client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> c) {
-      final MqttPublishMessage recMess = c[0].payload as MqttPublishMessage;
-      final topic = c[0].topic;
-      final message =
-          MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
-
+    void tempListener(String topic, String message) {
       debugPrint("[MQTT] [checkTopicExists] Received on $topic: $message");
-
-      if (topic == fullTopic && !completer.isCompleted) {
+      if (topic == fullTopic && !responded) {
+        responded = true;
         completer.complete(true);
+        removeListener(tempListener);
       }
-    });
+    }
 
-    // Step 2: subscribe setelah listener aktif
+    addListener(tempListener);
     subscribeToTopic(fullTopic);
 
-    // Step 3: timeout 5 detik
     Future.delayed(const Duration(seconds: 5)).then((_) {
-      if (!completer.isCompleted) {
+      if (!responded && !completer.isCompleted) {
         debugPrint(
             "[MQTT] checkTopicExists: timeout, no message on $fullTopic");
+        removeListener(tempListener);
         completer.complete(false);
       }
     });
 
-    final result = await completer.future;
-    await tempSubscription.cancel();
-    return result;
+    return completer.future;
   }
 
   void addListener(void Function(String topic, String message) listener) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dst_mk2/services/mqtt.dart';
 import 'package:dst_mk2/pages/gps.dart';
-import 'package:dst_mk2/services/qr_scanner.dart';
+import 'package:dst_mk2/services/qr_scanner.dart'; // pastikan sesuai path file scanner
 
 class TrackPage extends StatefulWidget {
   const TrackPage({super.key});
@@ -12,7 +12,8 @@ class TrackPage extends StatefulWidget {
 
 class _TrackPageState extends State<TrackPage> {
   late MQTTClientWrapper mqttClient;
-  String? keyHex;
+  String? selectedTopic;
+  String? selectedKeyBase64;
 
   @override
   void initState() {
@@ -98,8 +99,6 @@ class _TrackPageState extends State<TrackPage> {
 
   void _showAddDeviceDialog(BuildContext context) {
     final nameController = TextEditingController();
-    final codeController = TextEditingController();
-    keyHex = null;
 
     showDialog(
       context: context,
@@ -119,43 +118,51 @@ class _TrackPageState extends State<TrackPage> {
               controller: nameController,
               decoration: const InputDecoration(hintText: "Nama Perangkat"),
             ),
-            TextField(
-              controller: codeController,
-              decoration: const InputDecoration(hintText: "Kode Tracker"),
-            ),
             const SizedBox(height: 12),
-            ElevatedButton(
+            ElevatedButton.icon(
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text("Scan QR"),
               onPressed: () async {
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const QRScannerPage()),
+                    builder: (context) => const QRScannerPage(),
+                  ),
                 );
 
-                if (result != null && result is Map) {
-                  final topic = result["topic"];
-                  final key = result["key"];
+                if (result != null &&
+                    result is Map &&
+                    result.containsKey("topic") &&
+                    result.containsKey("key")) {
                   setState(() {
-                    codeController.text = topic;
-                    keyHex = key;
+                    selectedTopic = result["topic"];
+                    selectedKeyBase64 = result["key"];
                   });
                 }
               },
-              child: const Text("Scan QR"),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
                 final name = nameController.text.trim();
-                final code = codeController.text.trim();
+                final topic = selectedTopic;
 
-                final isValid = await mqttClient.checkTopicExists(code);
+                if (name.isEmpty || topic == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Isi nama dan scan QR terlebih dahulu"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                final isValid = await mqttClient.checkTopicExists(topic);
 
                 if (isValid) {
                   Navigator.pop(context);
 
-                  final hasilTopic = "$code/hasil";
-                  mqttClient.subscribeToTopic(hasilTopic);
+                  mqttClient.subscribeToTopic("hasil/$topic");
 
                   showDialog(
                     context: context,
@@ -177,15 +184,17 @@ class _TrackPageState extends State<TrackPage> {
                           const Text("Perangkat telah berhasil ditambahkan"),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
                               Navigator.pop(context);
+                              await Future.delayed(const Duration(seconds: 1));
+                              if (!mounted) return;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => GpsPage(
                                     trackerName: name,
-                                    trackerTopic: hasilTopic,
-                                    //keyHex: keyHex,
+                                    trackerTopic: "hasil/$topic",
+                                    aesBase64Key: selectedKeyBase64!,
                                   ),
                                 ),
                               );
