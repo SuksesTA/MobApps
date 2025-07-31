@@ -1,16 +1,21 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:dst_mk2/pages/profil_setting.dart';
-import 'package:dst_mk2/pages/security_setting.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
-//import 'package:dst_mk2/pages/getstarted.dart';
+
 import 'pages/login.dart';
 import 'pages/reset_password.dart';
 import 'pages/signup.dart';
 import 'pages/auth_landing.dart';
 import 'pages/home.dart';
+import 'pages/akun.dart';
+import 'pages/profil_setting.dart';
+import 'pages/security_setting.dart';
 import 'pages/edit_name.dart';
+import 'pages/new_password.dart';
+import 'pages/verify_password.dart';
+
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,20 +31,25 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Down Syndrome Tracker',
+      debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: SplashScreen(),
+      home: const SplashScreen(),
       routes: {
         '/auth': (context) => const AuthLanding(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
         '/reset': (context) => const ResetPasswordPage(),
         '/home': (context) => const HomePage(),
+        '/akun': (context) => const AccountPage(),
         '/profile': (context) => const ProfilSettingPage(),
         '/security': (context) => const SecuritySettingPage(),
         '/edit': (context) => const EditNamePage(),
+        '/newpass': (context) => const NewPasswordPage(),
+        '/verif': (context) => const VerifyPasswordPage(),
       },
     );
   }
@@ -57,38 +67,26 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkLoginStatus();
+      _navigateAfterDelay();
     });
   }
 
-  // Fungsi untuk mengecek status login
-  Future<void> _checkLoginStatus() async {
-    await Future.delayed(Duration(seconds: 3));
+  Future<void> _navigateAfterDelay() async {
+    await Future.delayed(const Duration(seconds: 3));
 
-    try {
-      debugPrint("DEBUG: Memulai pengecekan status login");
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      debugPrint("DEBUG: Status login dari SharedPreferences -> $isLoggedIn");
+    final user = FirebaseAuth.instance.currentUser;
+    debugPrint("DEBUG: FirebaseAuth.currentUser = ${user?.uid}");
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (isLoggedIn) {
-        debugPrint("DEBUG: Navigasi ke halaman Home");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      } else {
-        debugPrint("DEBUG: Navigasi ke halaman AuthLanding");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AuthLanding()),
-        );
-      }
-    } catch (e) {
-      debugPrint("ERROR saat membaca SharedPreferences: $e");
-      if (!mounted) return;
+    if (user != null) {
+      debugPrint("User sudah login, masuk ke Home");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } else {
+      debugPrint("Belum login, masuk ke AuthLanding");
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const AuthLanding()),

@@ -37,7 +37,7 @@ class TentangPerangkatPage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('assets/ikon/alat.png', height: 100),
+                Image.asset('assets/ikon/alat.png', height: 150),
               ],
             ),
             const SizedBox(height: 24),

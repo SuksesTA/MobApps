@@ -23,11 +23,7 @@ class _SignUpPageState extends State<SignUpPage> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    debugPrint(
-        "📥 Input Nama: $name | Email: $email | Password length: ${password.length}");
-
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      debugPrint("⚠️ Input belum lengkap");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Semua kolom wajib diisi")),
       );
@@ -35,10 +31,8 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     try {
-      debugPrint("🔐 Mencoba daftar akun...");
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
-      debugPrint("✅ Firebase: User dibuat: ${credential.user?.uid}");
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -48,23 +42,16 @@ class _SignUpPageState extends State<SignUpPage> {
         'email': email,
         'created_at': Timestamp.now(),
         'sign_in_method': 'email',
+        'photoUrl': null, // ⬅ Tambahan penting
       });
-      debugPrint("📤 Data dikirim ke Firestore");
 
       await credential.user!.sendEmailVerification();
-      debugPrint("📨 Email verifikasi dikirim ke $email");
 
-      if (!mounted) {
-        debugPrint("⛔ Widget sudah tidak aktif, batal setState");
-        return;
-      }
-
-      debugPrint("🎯 Memanggil setState untuk tampilkan halaman sukses...");
+      if (!mounted) return;
       setState(() {
         _isSuccess = true;
       });
     } on FirebaseAuthException catch (e) {
-      debugPrint("❌ Gagal daftar: ${e.message}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Gagal daftar: ${e.message}")),
       );
@@ -98,6 +85,7 @@ class _SignUpPageState extends State<SignUpPage> {
           'email': userCredential.user!.email,
           'created_at': Timestamp.now(),
           'sign_in_method': 'google',
+          'photoUrl': userCredential.user!.photoURL ?? null,
         });
       }
 
@@ -124,10 +112,7 @@ class _SignUpPageState extends State<SignUpPage> {
               alignment: Alignment.topCenter,
               child: Padding(
                 padding: const EdgeInsets.only(top: 55),
-                child: Image.asset(
-                  'assets/logo_dst2.png',
-                  height: 77,
-                ),
+                child: Image.asset('assets/logo_dst2.png', height: 77),
               ),
             ),
             Positioned(
@@ -141,11 +126,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     color: const Color(0xFF21A8DD),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.arrow_back, color: Colors.white),
                 ),
               ),
             ),
@@ -184,16 +165,11 @@ class _SignUpPageState extends State<SignUpPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Nama",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const Text("Nama", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        _buildInputField(
-          hint: "Nama Panjang",
-          controller: _nameController,
-        ),
+        _buildInputField(hint: "Nama Panjang", controller: _nameController),
         const SizedBox(height: 16),
-        const Text("Email",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const Text("Email", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         _buildInputField(
           hint: "example@gmail.com",
@@ -201,8 +177,7 @@ class _SignUpPageState extends State<SignUpPage> {
           controller: _emailController,
         ),
         const SizedBox(height: 16),
-        const Text("Password",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const Text("Password", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         _buildPasswordField(),
         const SizedBox(height: 24),
@@ -222,16 +197,7 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         ),
         const SizedBox(height: 24),
-        const Center(
-          child: Text(
-            "Atau",
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-              color: Colors.black87,
-            ),
-          ),
-        ),
+        const Center(child: Text("Atau", style: TextStyle(fontSize: 16))),
         const SizedBox(height: 12),
         Center(
           child: GestureDetector(
@@ -241,16 +207,9 @@ class _SignUpPageState extends State<SignUpPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.grey.shade300,
-                  width: 1,
-                ),
+                border: Border.all(color: Colors.grey.shade300),
               ),
-              child: Image.asset(
-                'assets/google.png',
-                height: 32,
-                width: 32,
-              ),
+              child: Image.asset('assets/google.png', height: 32, width: 32),
             ),
           ),
         ),
@@ -258,26 +217,15 @@ class _SignUpPageState extends State<SignUpPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              "Sudah punya akun? ",
-              style: TextStyle(color: Colors.black87, fontSize: 16),
-            ),
+            const Text("Sudah punya akun? "),
             TextButton(
               onPressed: () => Navigator.pushNamed(context, '/login'),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(0, 0),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
               child: const Text(
                 "Masuk",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFE695CC),
-                  fontSize: 16,
                   decoration: TextDecoration.underline,
-                  decorationColor: Color(0xFFE695CC),
-                  decorationThickness: 1.5,
                 ),
               ),
             ),
@@ -293,47 +241,28 @@ class _SignUpPageState extends State<SignUpPage> {
       children: [
         Column(
           children: const [
-            Text(
-              "Akun berhasil dibuat!",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF21A8DD),
-              ),
-              textAlign: TextAlign.center,
-            ),
+            Text("Akun berhasil dibuat!",
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF21A8DD))),
             SizedBox(height: 16),
             Text(
               "Kami telah mengirimkan email verifikasi,\nsilakan buka email Anda dan klik tautan\nverifikasi untuk melanjutkan",
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        Align(
-          alignment: Alignment.center,
-          child: TextButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/login');
-            },
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 0),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text(
-              "Masuk Di Sini",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color.fromARGB(236, 236, 173, 204),
-                decoration: TextDecoration.underline,
-                decorationColor: Color.fromARGB(236, 236, 173, 204),
-                decorationThickness: 1.5,
-              ),
+        TextButton(
+          onPressed: () => Navigator.pushNamed(context, '/login'),
+          child: const Text(
+            "Masuk Di Sini",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Color(0xFFE695CC),
+              decoration: TextDecoration.underline,
             ),
           ),
         ),
@@ -378,10 +307,8 @@ class _SignUpPageState extends State<SignUpPage> {
           borderSide: BorderSide.none,
         ),
         suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.grey[600],
-          ),
+          icon:
+              Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
           onPressed: () {
             setState(() {
               _obscurePassword = !_obscurePassword;

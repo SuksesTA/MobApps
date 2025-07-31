@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dst_mk2/pages/akun.dart';
 import 'package:dst_mk2/pages/lacak.dart';
 import 'package:dst_mk2/pages/tentang_perangkat.dart';
@@ -49,8 +51,40 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
+
+  @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
+  String name = '...';
+  String? photoUrl;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final data = doc.data();
+    setState(() {
+      name = data?['name'] ?? 'Tanpa Nama';
+      photoUrl = data?['photoUrl'];
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,157 +97,166 @@ class HomeContent extends StatelessWidget {
           ),
         ),
         SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
                   children: [
-                    Row(
-                      children: const [
-                        CircleAvatar(
-                          backgroundColor: Colors.white,
-                          radius: 22,
-                          child: Icon(Icons.person, color: Colors.grey),
-                        ),
-                        SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Halo!",
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white)),
-                            Text("Nama",
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.white))
-                          ],
-                        )
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              photoUrl != null
+                                  ? CircleAvatar(
+                                      radius: 22,
+                                      backgroundImage: NetworkImage(photoUrl!),
+                                    )
+                                  : const CircleAvatar(
+                                      backgroundColor: Colors.white,
+                                      radius: 22,
+                                      child: Icon(Icons.person,
+                                          color: Colors.grey),
+                                    ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Halo!",
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white)),
+                                  Text(name,
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.white)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Image.asset('assets/logo_dst2.png', height: 45),
+                        ],
+                      ),
                     ),
-                    Image.asset(
-                      'assets/logo_dst2.png',
-                      height: 45,
-                    )
-                  ],
-                ),
-              ),
 
-              // Card Perangkat
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4D5E8A),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Belum ada perangkat yang terhubung",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(
-                        color: Colors.white54, indent: 32, endIndent: 32),
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () {
-                        // TODO: Aksi tambah perangkat
-                      },
+                    // Card Perangkat
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4D5E8A),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                      ),
                       child: Column(
-                        children: const [
-                          Icon(Icons.add_circle_outline,
-                              color: Color(0xFF21A8DD), size: 40),
-                          SizedBox(height: 4),
-                          Text(
-                            "Tambah Perangkat",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                        children: [
+                          const Text(
+                            "Belum ada perangkat yang terhubung",
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          const SizedBox(height: 10),
+                          const Divider(
+                              color: Colors.white54, indent: 32, endIndent: 32),
+                          const SizedBox(height: 10),
+                          GestureDetector(
+                            onTap: () {
+                              // TODO: Aksi tambah perangkat
+                            },
+                            child: Column(
+                              children: const [
+                                Icon(Icons.add_circle_outline,
+                                    color: Color(0xFF21A8DD), size: 40),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Tambah Perangkat",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              ],
                             ),
                           )
+                        ],
+                      ),
+                    ),
+
+                    // Konten Menu dan Banner
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.2),
+                                    blurRadius: 4,
+                                  )
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  _menuIcon('assets/ikon/tentang_perangkat.png',
+                                      "Tentang\nPerangkat", () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const TentangPerangkatPage()),
+                                    );
+                                  }),
+                                  _menuIcon('assets/ikon/tentang_kami.png',
+                                      "Tentang\nKami", () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const TentangKamiPage()),
+                                    );
+                                  }),
+                                  _menuIcon('assets/ikon/atur_perangkat.png',
+                                      "Atur\nPerangkat", () {
+                                    // TODO: aksi
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.asset(
+                                'assets/banner_potads.png',
+                                height: 160,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     )
                   ],
                 ),
-              ),
-
-              // Konten
-              Expanded(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                blurRadius: 4,
-                              )
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _menuIcon('assets/ikon/tentang_perangkat.png',
-                                  "Tentang\nPerangkat", () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const TentangPerangkatPage()),
-                                );
-                              }),
-                              _menuIcon('assets/ikon/tentang_kami.png',
-                                  "Tentang\nKami", () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const TentangKamiPage()),
-                                );
-                              }),
-                              _menuIcon('assets/ikon/atur_perangkat.png',
-                                  "Atur\nPerangkat", () {}),
-                            ],
-                          )),
-                    ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.asset(
-                          'assets/banner_potads.png',
-                          height: 160,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            ],
-          ),
-        )
+        ),
       ],
     );
   }

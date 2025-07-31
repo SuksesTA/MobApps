@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EditNamePage extends StatefulWidget {
   const EditNamePage({super.key});
@@ -10,21 +11,33 @@ class EditNamePage extends StatefulWidget {
 
 class _EditNamePageState extends State<EditNamePage> {
   final TextEditingController _nameController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentName();
+    _loadCurrentNameFromFirestore();
   }
 
-  Future<void> _loadCurrentName() async {
-    final prefs = await SharedPreferences.getInstance();
-    _nameController.text = prefs.getString('userName') ?? 'Nama Panjang';
+  Future<void> _loadCurrentNameFromFirestore() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final currentName = doc.data()?['name'] ?? '';
+      _nameController.text = currentName;
+    } catch (e) {
+      debugPrint("❌ Gagal memuat nama: $e");
+    }
   }
 
-  Future<void> _saveName() async {
+  Future<void> _saveNameToFirestore() async {
     final name = _nameController.text.trim();
-
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -36,30 +49,54 @@ class _EditNamePageState extends State<EditNamePage> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userName', name);
+    setState(() {
+      _isLoading = true;
+    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 6,
-        duration: Duration(seconds: 2),
-        content: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text("Nama berhasil diubah", style: TextStyle(color: Colors.black)),
-            Icon(Icons.check_circle, color: Colors.teal),
-          ],
-        ),
-      ),
-    );
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
-    // Opsional kembali ke halaman sebelumnya setelah simpan
-    Navigator.pop(context);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'name': name});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 6,
+            duration: Duration(seconds: 2),
+            content: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Nama berhasil diubah",
+                    style: TextStyle(color: Colors.black)),
+                Icon(Icons.check_circle, color: Colors.teal),
+              ],
+            ),
+          ),
+        );
+
+        Navigator.pop(context); // kembali ke halaman sebelumnya
+      }
+    } catch (e) {
+      debugPrint("❌ Gagal update nama: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal mengubah nama: $e")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -107,7 +144,7 @@ class _EditNamePageState extends State<EditNamePage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saveName,
+                onPressed: _isLoading ? null : _saveNameToFirestore,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF21A8DD),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -115,13 +152,17 @@ class _EditNamePageState extends State<EditNamePage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  "Simpan",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                    : const Text(
+                        "Simpan",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ],

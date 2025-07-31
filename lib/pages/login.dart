@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -16,11 +15,6 @@ class _LoginPageState extends State<LoginPage> {
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
-  Future<void> saveLoginStatus(bool isLoggedIn) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', isLoggedIn);
-  }
 
   Future<void> handleLogin() async {
     final email = _emailController.text.trim();
@@ -39,7 +33,6 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
 
-      await saveLoginStatus(true);
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +71,6 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
 
-      await saveLoginStatus(true);
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
