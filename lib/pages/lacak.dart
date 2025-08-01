@@ -42,14 +42,21 @@ class _TrackerPageState extends State<TrackerPage> {
   @override
   void initState() {
     super.initState();
-    tracker.decryptor = AESGCMDecryptor.fromBase64Key(widget.aesBase64Key);
-    _initMqtt();
 
+    // ✅ Set state global tracker
+    tracker.trackerName = widget.trackerName;
+    tracker.trackerCode = widget.trackerTopic.replaceFirst("hasil/", "");
+    tracker.aesKey = widget.aesBase64Key;
+    tracker.decryptor = AESGCMDecryptor.fromBase64Key(widget.aesBase64Key);
+    tracker.isConnected = true;
+
+    // ✅ Ambil posisi terakhir jika ada
     if (tracker.lastLatLng != null) {
       currentPosition = tracker.lastLatLng!;
       pathHistory.add(currentPosition);
     }
 
+    // ✅ Ambil data terakhir dari tracker
     batre = tracker.battery;
     temperature = tracker.temperature;
     humidity = tracker.humidity;
@@ -58,12 +65,17 @@ class _TrackerPageState extends State<TrackerPage> {
     accZ = tracker.accZ;
     speed = tracker.speed;
     condition = tracker.condition;
+
+    _initMqtt();
   }
 
   Future<void> _initMqtt() async {
     mqttClient = MQTTClientWrapper();
     mqttClient.addListener(_handleEncryptedMessage);
-    mqttClient.subscribeToTopic(widget.trackerTopic);
+
+    if (!mqttClient.isSubscribed(widget.trackerTopic)) {
+      mqttClient.subscribeToTopic(widget.trackerTopic);
+    }
   }
 
   @override
@@ -155,9 +167,9 @@ class _TrackerPageState extends State<TrackerPage> {
             TextButton(
               onPressed: () {
                 mqttClient.unsubscribeFromTopic(widget.trackerTopic);
-                TrackerState().reset();
-                Navigator.pop(context, true);
-                Navigator.pop(context);
+                tracker.reset();
+                Navigator.pop(context); // tutup dialog
+                Navigator.pop(context); // kembali ke halaman sebelumnya
               },
               child:
                   const Text("Putuskan", style: TextStyle(color: Colors.red)),
@@ -212,7 +224,7 @@ class _TrackerPageState extends State<TrackerPage> {
                   ? {
                       Polyline(
                         polylineId: const PolylineId("path"),
-                        color: Colors.blue,
+                        color: const Color.fromARGB(255, 255, 0, 0),
                         width: 4,
                         points: pathHistory,
                       )

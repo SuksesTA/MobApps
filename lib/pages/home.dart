@@ -26,7 +26,8 @@ class _HomePageState extends State<HomePage> {
 
   void _handleTabChange(int index) {
     if (index == 1) {
-      if (TrackerState().isConnected) {
+      final tracker = TrackerState();
+      if (tracker.isReady) {
         Navigator.push(
           context,
           MaterialPageRoute(

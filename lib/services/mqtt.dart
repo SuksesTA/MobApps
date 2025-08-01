@@ -26,15 +26,18 @@ class MQTTClientWrapper {
   late MqttServerClient client;
   final List<void Function(String topic, String message)> _listeners = [];
   final Set<String> _subscribedTopics = {};
-
   bool _initialized = false;
   bool _isConnected = false;
 
   Future<void> _prepareMqttClient() async {
     debugPrint("[MQTT] Preparing client...");
+
+    // ✅ Gunakan clientId unik
+    final clientId = 'FlutterClient_${DateTime.now().millisecondsSinceEpoch}';
+
     client = MqttServerClient.withPort(
       '35.238.54.189',
-      'FlutterClient',
+      clientId,
       1883,
     );
 
@@ -47,13 +50,14 @@ class MQTTClientWrapper {
     try {
       await client.connect('admin', 'hivemq');
       _isConnected = true;
-      debugPrint("[MQTT] Connected!");
+      debugPrint("[MQTT] Connected as $clientId");
     } catch (e) {
       debugPrint("[MQTT] Connection failed: $e");
       _isConnected = false;
       return;
     }
 
+    // ✅ Pastikan listener dipasang ulang setiap connect
     client.updates?.listen(_onMessageReceived);
 
     _initialized = true;
