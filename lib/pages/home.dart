@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
 import 'package:dst_mk2/pages/akun.dart';
 import 'package:dst_mk2/pages/lacak.dart';
 import 'package:dst_mk2/pages/tentang_perangkat.dart';
 import 'package:dst_mk2/pages/tentang_kami.dart';
+import 'package:dst_mk2/pages/atur_perangkat.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -63,10 +67,37 @@ class _HomeContentState extends State<HomeContent> {
   String? photoUrl;
   bool isLoading = true;
 
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  final List<Map<String, String>> _banners = [
+    {
+      'image': 'assets/banner_potads.png',
+      'url': 'https://potadsjabar.or.id/',
+    },
+    {
+      'image': 'assets/banner_dst.png',
+      'url': 'https://youtu.be/miLtPLwo0OE?si=4x_qTNNC65YhM-J7',
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
+
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 4));
+      if (!mounted) return false;
+
+      _currentPage = (_currentPage + 1) % _banners.length;
+      _pageController.animateToPage(
+        _currentPage,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+      return true;
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -84,6 +115,42 @@ class _HomeContentState extends State<HomeContent> {
       photoUrl = data?['photoUrl'];
       isLoading = false;
     });
+  }
+
+  Future<void> _launchWithFallback(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    try {
+      final canLaunchExternally = await canLaunchUrl(uri);
+      if (canLaunchExternally) {
+        final success =
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!success) _openWebView(context, url);
+      } else {
+        _openWebView(context, url);
+      }
+    } catch (_) {
+      _openWebView(context, url);
+    }
+  }
+
+  void _openWebView(BuildContext context, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: const Text("Tautan"),
+            backgroundColor: const Color(0xFF2C3E66),
+            foregroundColor: Colors.white,
+          ),
+          body: WebViewWidget(
+            controller: WebViewController()
+              ..setJavaScriptMode(JavaScriptMode.unrestricted)
+              ..loadRequest(Uri.parse(url)),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -189,7 +256,7 @@ class _HomeContentState extends State<HomeContent> {
                       ),
                     ),
 
-                    // Konten Menu dan Banner
+                    // Menu dan Banner
                     Expanded(
                       child: Column(
                         children: [
@@ -232,7 +299,12 @@ class _HomeContentState extends State<HomeContent> {
                                   }),
                                   _menuIcon('assets/ikon/atur_perangkat.png',
                                       "Atur\nPerangkat", () {
-                                    // TODO: aksi
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const AturPerangkatPage()),
+                                    );
                                   }),
                                 ],
                               ),
@@ -241,14 +313,54 @@ class _HomeContentState extends State<HomeContent> {
                           const SizedBox(height: 20),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                'assets/banner_potads.png',
-                                height: 160,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 160,
+                                  child: PageView.builder(
+                                    controller: _pageController,
+                                    itemCount: _banners.length,
+                                    onPageChanged: (index) {
+                                      setState(() => _currentPage = index);
+                                    },
+                                    itemBuilder: (context, index) {
+                                      final banner = _banners[index];
+                                      return GestureDetector(
+                                        onTap: () => _launchWithFallback(
+                                            context, banner['url']!),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          child: Image.asset(
+                                            banner['image']!,
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children:
+                                      List.generate(_banners.length, (index) {
+                                    return Container(
+                                      width: 8,
+                                      height: 8,
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _currentPage == index
+                                            ? const Color(0xFF21A8DD)
+                                            : Colors.grey[300],
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
                           ),
                         ],
