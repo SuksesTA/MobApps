@@ -8,7 +8,7 @@ class AturPerangkatPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Atur Perangkat"),
+        title: const Text("Detail Perangkat"),
         centerTitle: true,
         backgroundColor: const Color(0xFF2C3E66),
         foregroundColor: Colors.white,

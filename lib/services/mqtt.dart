@@ -13,9 +13,11 @@ class MQTTClientWrapper {
         !_instance._listeners.contains(onMessageReceived)) {
       _instance._listeners.add(onMessageReceived);
     }
+
     if (!_instance._initialized) {
       _instance._prepareMqttClient();
     }
+
     return _instance;
   }
 
@@ -23,6 +25,8 @@ class MQTTClientWrapper {
 
   late MqttServerClient client;
   final List<void Function(String topic, String message)> _listeners = [];
+  final Set<String> _subscribedTopics = {};
+
   bool _initialized = false;
   bool _isConnected = false;
 
@@ -56,12 +60,13 @@ class MQTTClientWrapper {
   }
 
   void _onMessageReceived(List<MqttReceivedMessage<MqttMessage>> event) {
-    final MqttPublishMessage recMess = event[0].payload as MqttPublishMessage;
+    final recMess = event[0].payload as MqttPublishMessage;
     final message =
         MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
     final topic = event[0].topic;
 
     debugPrint("[MQTT] Message from $topic: $message");
+
     for (var listener in _listeners) {
       try {
         listener(topic, message);
@@ -72,9 +77,12 @@ class MQTTClientWrapper {
   }
 
   void subscribeToTopic(String topic) {
-    if (_isConnected) {
+    if (_isConnected && !_subscribedTopics.contains(topic)) {
       debugPrint("[MQTT] Subscribing to $topic");
       client.subscribe(topic, MqttQos.atMostOnce);
+      _subscribedTopics.add(topic);
+    } else if (_subscribedTopics.contains(topic)) {
+      debugPrint("[MQTT] Already subscribed to $topic");
     } else {
       debugPrint("[MQTT] Can't subscribe, not connected.");
     }
@@ -84,10 +92,12 @@ class MQTTClientWrapper {
     if (_isConnected) {
       debugPrint("[MQTT] Unsubscribing from $topic");
       client.unsubscribe(topic);
+      _subscribedTopics.remove(topic);
     }
   }
 
-  /// Mengecek apakah topik hasil/<token> memiliki pesan (retained atau aktif)
+  bool isSubscribed(String topic) => _subscribedTopics.contains(topic);
+
   Future<bool> checkTopicExists(String token) async {
     if (!_isConnected) return false;
 
@@ -96,7 +106,6 @@ class MQTTClientWrapper {
     bool responded = false;
 
     void tempListener(String topic, String message) {
-      debugPrint("[MQTT] [checkTopicExists] Received on $topic: $message");
       if (topic == fullTopic && !responded) {
         responded = true;
         completer.complete(true);
@@ -109,8 +118,7 @@ class MQTTClientWrapper {
 
     Future.delayed(const Duration(seconds: 5)).then((_) {
       if (!responded && !completer.isCompleted) {
-        debugPrint(
-            "[MQTT] checkTopicExists: timeout, no message on $fullTopic");
+        debugPrint("[MQTT] checkTopicExists timeout: $fullTopic");
         removeListener(tempListener);
         completer.complete(false);
       }
@@ -129,7 +137,14 @@ class MQTTClientWrapper {
     _listeners.remove(listener);
   }
 
-  void _onConnected() => debugPrint("[MQTT] onConnected");
-  void _onDisconnected() => debugPrint("[MQTT] onDisconnected");
+  void _onConnected() => debugPrint("[MQTT] Connected");
+  void _onDisconnected() => debugPrint("[MQTT] Disconnected");
   void _onSubscribed(String topic) => debugPrint("[MQTT] Subscribed to $topic");
+
+  Future<void> ensureConnected() async {
+    if (!_initialized || !_isConnected) {
+      debugPrint("[MQTT] ensureConnected: reconnecting...");
+      await _prepareMqttClient();
+    }
+  }
 }
