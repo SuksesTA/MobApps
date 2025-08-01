@@ -29,42 +29,25 @@ class _TrackerPageState extends State<TrackerPage> {
   LatLng currentPosition = const LatLng(-6.91201, 107.63124);
   List<LatLng> pathHistory = [];
 
-  String batre = '-';
-  String temperature = '-';
-  String humidity = '-';
-  String accX = '-';
-  String accY = '-';
-  String accZ = '-';
-  String speed = '-';
-  String condition = '-';
+  bool _mapReady = false;
   bool showWarning = false;
 
   @override
   void initState() {
     super.initState();
 
-    // ✅ Set state global tracker
+    // Inisialisasi tracker global
     tracker.trackerName = widget.trackerName;
     tracker.trackerCode = widget.trackerTopic.replaceFirst("hasil/", "");
     tracker.aesKey = widget.aesBase64Key;
     tracker.decryptor = AESGCMDecryptor.fromBase64Key(widget.aesBase64Key);
     tracker.isConnected = true;
 
-    // ✅ Ambil posisi terakhir jika ada
+    // Data terakhir jika ada
     if (tracker.lastLatLng != null) {
       currentPosition = tracker.lastLatLng!;
       pathHistory.add(currentPosition);
     }
-
-    // ✅ Ambil data terakhir dari tracker
-    batre = tracker.battery;
-    temperature = tracker.temperature;
-    humidity = tracker.humidity;
-    accX = tracker.accX;
-    accY = tracker.accY;
-    accZ = tracker.accZ;
-    speed = tracker.speed;
-    condition = tracker.condition;
 
     _initMqtt();
   }
@@ -99,55 +82,58 @@ class _TrackerPageState extends State<TrackerPage> {
       final lon = double.tryParse(parts[3]);
 
       if (lat == null || lon == null) {
-        debugPrint("[TrackerPage] Parsing lat/lon gagal");
-        _showWarning("Koordinat tidak terbaca");
+        _showWarning("Koordinat tidak valid");
         return;
       }
 
       final pos = LatLng(lat, lon);
 
-      tracker.battery = parts[1];
-      tracker.temperature = parts[4];
-      tracker.humidity = parts[5];
-      tracker.accX = parts[6];
-      tracker.accY = parts[7];
-      tracker.accZ = parts[8];
-      tracker.speed = parts[9];
-      tracker.condition = parts[10];
-      tracker.lastLatLng = pos;
-      tracker.lastUpdateTime = DateTime.now();
+      tracker
+        ..battery = parts[1]
+        ..temperature = parts[4]
+        ..humidity = parts[5]
+        ..accX = parts[6]
+        ..accY = parts[7]
+        ..accZ = parts[8]
+        ..speed = parts[9]
+        ..condition = parts[10]
+        ..lastLatLng = pos
+        ..lastUpdateTime = DateTime.now();
 
       setState(() {
-        batre = tracker.battery;
-        temperature = tracker.temperature;
-        humidity = tracker.humidity;
-        accX = tracker.accX;
-        accY = tracker.accY;
-        accZ = tracker.accZ;
-        speed = tracker.speed;
-        condition = tracker.condition;
         currentPosition = pos;
         pathHistory.add(pos);
         showWarning = false;
       });
 
-      mapController.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: pos, zoom: 17),
-        ),
-      );
+      if (_mapReady) {
+        mapController.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: pos, zoom: 17),
+          ),
+        );
+      }
     } else {
       _showWarning("Format data tidak sesuai");
     }
   }
 
-  void _showWarning(String message) {
-    debugPrint("[TrackerPage] $message");
+  void _showWarning(String msg) {
+    debugPrint("[TrackerPage] $msg");
     setState(() => showWarning = true);
   }
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
+    _mapReady = true;
+
+    if (tracker.lastLatLng != null) {
+      mapController.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: tracker.lastLatLng!, zoom: 17),
+        ),
+      );
+    }
   }
 
   void _disconnectTracker() {
@@ -167,9 +153,9 @@ class _TrackerPageState extends State<TrackerPage> {
             TextButton(
               onPressed: () {
                 mqttClient.unsubscribeFromTopic(widget.trackerTopic);
-                tracker.reset();
-                Navigator.pop(context); // tutup dialog
-                Navigator.pop(context); // kembali ke halaman sebelumnya
+                TrackerState().reset();
+                Navigator.pop(context);
+                Navigator.pop(context);
               },
               child:
                   const Text("Putuskan", style: TextStyle(color: Colors.red)),
@@ -282,24 +268,24 @@ class _TrackerPageState extends State<TrackerPage> {
             ),
           Row(
             children: [
-              _infoExpanded("Baterai", "$batre%"),
-              _infoExpanded("Suhu", "$temperature°C"),
-              _infoExpanded("Kelembaban", "$humidity%"),
+              _infoExpanded("Baterai", "${tracker.battery}%"),
+              _infoExpanded("Suhu", "${tracker.temperature}°C"),
+              _infoExpanded("Kelembaban", "${tracker.humidity}%"),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              _infoExpanded("Akselerasi X", accX),
-              _infoExpanded("Akselerasi Y", accY),
-              _infoExpanded("Akselerasi Z", accZ),
+              _infoExpanded("Akselerasi X", tracker.accX),
+              _infoExpanded("Akselerasi Y", tracker.accY),
+              _infoExpanded("Akselerasi Z", tracker.accZ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              _infoExpanded("Kecepatan", speed),
-              _infoExpanded("Kondisi", condition),
+              _infoExpanded("Kecepatan", tracker.speed),
+              _infoExpanded("Kondisi", tracker.condition),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
