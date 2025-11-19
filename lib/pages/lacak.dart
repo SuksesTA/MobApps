@@ -26,7 +26,7 @@ class _TrackerPageState extends State<TrackerPage> {
   late GoogleMapController mapController;
   late MQTTClientWrapper mqttClient;
 
-  LatLng currentPosition = const LatLng(-6.91201, 107.63124);
+  LatLng currentPosition = const LatLng(-6.96923, 107.62817);
   List<LatLng> pathHistory = [];
 
   bool _mapReady = false;

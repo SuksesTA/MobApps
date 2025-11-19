@@ -11,15 +11,38 @@ class QRScannerPage extends StatefulWidget {
 
 class _QRScannerPageState extends State<QRScannerPage> {
   bool _scanned = false;
+
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final Map<String, String> trackerKeys = {
+    "PukEOu": "YD3rEBXKcb4rc67whX13gQ==",
+    "BNtjEO": "HvKmhyodofMJxumFnrh8ZA==",
+    "YzMtje": "GRebD2fuAQimynNC4tO61w==",
+    "zMtjEO": "/Blo/ipC2EU5qPdVdQzNoA==",
+    "FPuJRV": "o/J4W28AS62A87Z2GiY4ng==",
+    "cbAMtj": "T6LZbIEFvjN6yBD0LZ5WCw==",
+    "zMSVxl": "nDpx4Esi+Y1esWAHrDTSGA==",
+    "dbAngd": "K2+QzRNHrlqE8TkCfbboJQ==",
+    "GqieBn": "/xFjii7UWXDDlg+oTSG+XA==",
+    "azMtje": "MIcatOafQt0Fa8xzKJTwPQ==",
+    "aaazMt": "asEOVZs49yTQTIGuE265Rw==",
+    "SVXYYY": "F+lLkvo2DNdfo3ghzmSNCg==",
+    "MtjeBn": "sl0Dj0bJcR7aIJpn804LhQ==",
+    "lFpHqi": "iCz2STW9CmfOEZ9SpHsD2A==",
+    "HQUWXy": "W5AvrhRjzAjyfTG3SuWZIA==",
+    "lfcbAn": "DbhPJnGV6jxSBs+EG9Ngng==",
+    "JriecA": "xzRaAY71K2nWSBOgfy2Uvg==",
+    "AMSVXY": "IW2L8D5XrALZQXOcBb5oFA==",
+    "vkEOuk": "qQ823kyCUbN+GcUglv0qZA==",
+    "iDOTwl": "POJXjQmwbxTRhC56zzWQqw==",
+    "cbaaaa": "ckkL+CXWnjFkvAelHO9YAw==",
+    "AMSVxl": "VhPajEC+KZf0DmOxKnWdCA==",
+    "NTwlFP": "7QRrkD/CWBp8phHVLotH+Q==",
+    "DOuJri": "Cn/GNZgkvlHSaQOvRo4dcA==",
+    "EOTwlf": "ObUC52yBStCVGPwnU5tAbg==",
+  };
 
   void _handleQR(String? raw) {
     if (_scanned || raw == null) return;
@@ -27,47 +50,36 @@ class _QRScannerPageState extends State<QRScannerPage> {
     try {
       final decoded = jsonDecode(raw);
 
-      if (decoded is Map &&
-          decoded.containsKey("topic") &&
-          decoded.containsKey("key")) {
-        final String topic = decoded["topic"];
-        final String key = decoded["key"]; // key diharapkan dalam Base64
-
-        // Validasi opsional: pastikan key adalah Base64
-        if (!_isValidBase64(key)) {
-          _showError("Format kunci tidak valid (bukan Base64)");
-          return;
-        }
-
-        setState(() => _scanned = true);
-        Navigator.pop(context, {
-          "topic": topic,
-          "key": key,
-        });
-      } else {
+      if (decoded is! Map || !decoded.containsKey("topic")) {
         _showError("QR tidak valid");
+        return;
       }
+
+      final topic = decoded["topic"];
+
+      // --- CARI KEY BERDASARKAN TOPIC ---
+      if (!trackerKeys.containsKey(topic)) {
+        _showError("Tracker tidak dikenal");
+        return;
+      }
+
+      final key = trackerKeys[topic];
+
+      setState(() => _scanned = true);
+
+      Navigator.pop(context, {
+        "topic": topic,
+        "key": key,
+      });
     } catch (_) {
       _showError("QR tidak dapat dibaca");
     }
   }
 
-  bool _isValidBase64(String input) {
-    try {
-      base64Decode(input);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  void _showError(String message) {
+  void _showError(String msg) {
     if (!_scanned) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(msg), backgroundColor: Colors.red),
       );
     }
   }
@@ -80,18 +92,16 @@ class _QRScannerPageState extends State<QRScannerPage> {
         children: [
           MobileScanner(
             controller: _controller,
-            onDetect: (BarcodeCapture capture) {
+            onDetect: (capture) {
               final barcode = capture.barcodes.first;
               _handleQR(barcode.rawValue);
             },
           ),
           if (_scanned)
             Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+              color: Colors.black45,
+              child: const Center(child: CircularProgressIndicator()),
+            )
         ],
       ),
     );
